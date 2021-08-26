@@ -25,37 +25,35 @@ class LoginScreen extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      inputEmail: '',
+      inputUser: '',
       inputPassword: '',
     };
   }
 
   _validation = () => {
-    let isValid = true;
-    const regEmail = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
-    const {inputEmail, inputPassword} = this.state;
 
-    if (inputEmail.trim() === '') {
+    let isValid = true;
+    // const regEmail = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    const {inputUser, inputPassword} = this.state;
+
+    if (inputUser.trim() === '') {
       isValid = false;
-      this.setState({emailErrorMsg: 'Email must be filled out'});
-    } else if (regEmail.test(inputEmail) === false) {
-      isValid = false;
-      this.setState({emailErrorMsg: 'Invalid email'});
+      this.setState({emailErrorMsg: 'Username Harus Di isi'});
     } else {
       this.setState({emailErrorMsg: ''});
     }
 
-    if (inputPassword.length < 7) {
+    if (inputPassword.length < 4) {
       isValid = false;
       this.setState({
-        passwordErrorMsg: 'Password must be at least 8 characters long',
+        passwordErrorMsg: 'Password harus di isi',
       });
     } else {
       this.setState({passwordErrorMsg: ''});
     }
 
     if (isValid) {
-      onButtonLoginClick(inputEmail, inputPassword, this.props.navigation);
+      onButtonLoginClick(inputUser, inputPassword, this.props.navigation);
     }
   };
 
@@ -70,9 +68,9 @@ class LoginScreen extends Component {
             <Text style={styles.text}>Login</Text>
             <CInputForm
               errorMsg={emailErrorMsg}
-              placeholder="Email"
-              onChangeText={(inputEmail) => {
-                this.setState({inputEmail});
+              placeholder="Username"
+              onChangeText={(inputUser) => {
+                this.setState({inputUser});
               }}
             />
             <CInputForm
@@ -90,12 +88,12 @@ class LoginScreen extends Component {
               onPress={() => this._validation()}
             />
             <CMargin />
-            <CButton
+            {/* <CButton
               fontColor={secondaryColor}
               color={whiteColor}
               title={'REGISTER'}
               onPress={() => this.props.navigation.navigate('Register')}
-            />
+            /> */}
           </View>
         </ScrollView>
       </SafeAreaView>

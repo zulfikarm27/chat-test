@@ -5,7 +5,6 @@ import SplashScren from '../pages/SplashScreen/SplashScren';
 import RegisterScreen from '../pages/RegisterScreen/RegisterScreen';
 import HomeScreen from '../pages/HomeScreen/HomeScreen';
 import messaging from "@react-native-firebase/messaging";
-import ContactScreen from '../pages/ContactScreen';
 import ChattingScreen from '../pages/ChattingScreen';
 
 const Stack = createStackNavigator()
@@ -32,11 +31,7 @@ class Router extends Component {
         return (
             <Stack.Navigator initialRouteName="Splash">
                 <Stack.Screen name="Splash" component={SplashScren} options={hide} />
-                <Stack.Screen name="Login" component={LoginScreen} options={hide} />
-                <Stack.Screen name="Register" component={RegisterScreen} options={hide} />
                 <Stack.Screen name="Home" component={HomeScreen} options={hide} />
-                <Stack.Screen name="Contact" component={ContactScreen} />
-                <Stack.Screen name="Chatting" component={ChattingScreen} options={hide} />
             </Stack.Navigator>
         )
     }

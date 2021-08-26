@@ -10,13 +10,8 @@ class SplashScren extends Component {
     setTimeout(() => {
       auth().onAuthStateChanged((user)=>{
           console.log("user loggin:",user)
-          if (!user) {
-            this.props.navigation.replace('Login');
-            // this.props.isOnline(false)
-          }else{
             this.props.navigation.replace('Home');
             this.props.isOnline(true)
-          }
       })
 
     }, 2000);
@@ -25,7 +20,7 @@ class SplashScren extends Component {
   render() {
     return (
       <View style={{flex:1,alignItems: 'center', justifyContent: 'center', backgroundColor:primaryColor}}>
-        <Text style={{color: whiteColor, fontWeight:'bold', marginTop:12}}>Chat App</Text>
+        <Text style={{color: whiteColor, fontWeight:'bold', marginTop:12}}>Chat Bot</Text>
       </View>
     );
   }

@@ -3,27 +3,19 @@ import { SET_LOGIN } from '../../helper/Constant';
 import {Store} from '../../redux/Store';
 import {replaceTo, showMessage} from '../GlobalAction';
 
-export const onButtonLoginClick = (email, password, navigation) => {
-  auth()
-    .signInWithEmailAndPassword(email, password)
-    .then(
-      () => {
-        // handle navigation at observer on spoashscreen
-        // replaceTo(navigation, 'Home');
-        Store.dispatch({
-          type: SET_LOGIN,
-          payload: true,
-        });
-      },
-      (error) => {
-        console.log(error);
-        if (error.code === 'auth/user-not-found') {
-          showMessage('Email not registered');
-        } else if (error.code === 'auth/wrong-password') {
-          showMessage('Wrong password');
-        } else {
-          showMessage(error.code);
-        }
-      },
-    );
+
+export const onButtonLoginClick = (inputUser, inputPassword, navigation) => {
+console.log("masuk action")
+  fetch('http://192.168.100.42:3000/users')
+  .then(response => response.json())
+  .then(users => {
+    console.log(users)
+    console.log(inputUser)
+    const user = users[0]
+    if (inputUser == user.username && inputPassword == user.password ){
+    replaceTo(navigation, 'Home');
+  }else{
+    showMessage('username atau password salah');
+  }})
+  .catch(error=> console.log(error))
 };

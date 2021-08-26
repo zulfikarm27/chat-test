@@ -2,16 +2,16 @@ import React, {Component} from 'react';
 import { FlatList, Image, Platform, SafeAreaView, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {primaryColor, screenWidth, SET_LOGIN, SET_ONLINE,SET_UID, SET_UID_USER_2, SET_UNREAD_CHAT_KEY, whiteColor} from '../../helper/Constant';
 import {dummyAvatar} from '../../assets';
-import CFab from './components/CFab';
-import ChatCard from './components/ChatCard';
-import CMargin from "../../components/CMargin";
-import { fetchMessages, getOtherUserId, getUserProfile, onLogout, saveTokenToFirebase, saveUserProfiletoLocal, setOnlineUserFirebase } from './action';
-import messaging from "@react-native-firebase/messaging";
-import firestore,{ firebase } from '@react-native-firebase/firestore';
+import { onLogout, logChat } from './action';
 import { connect } from 'react-redux';
 import CLogout from './components/CLogout';
 import CModalLogOut from './components/CModalLogOut';
-import PushNotification from 'react-native-push-notification';
+import CBubbleMe from './components/cBubbleMe';
+import CBubbleOthers from './components/cBubleOthers';
+import CInputChatting from './components/cInputChatting';
+import { clearUnreadMsg, getChatting, onDeleteChat, sendChat } from './action';
+import COptions from './components/cOptionChat';
+import _ from 'lodash';
 
 
 class HomeScreen extends Component {
@@ -19,108 +19,185 @@ class HomeScreen extends Component {
     super(props)
     this.state= {
         isVisible: false,
+        user2Profile:{
+          avatarUrl: 'https://www.vippng.com/png/detail/416-4161690_empty-profile-picture-blank-avatar-image-circle.png'
+      },
+      chatContentSend:'',
+      isOptionShow: false,
+      indexChat : 0,
+      chatUser :[],
+      itemUser : [{'sendBy': 'other', 'messages' : 'Halo'}],
+      time:'',
+      dataBot: []
     }
   }
 
   componentDidMount() {
-    const isOnline = this.props.isOnline
-    if (Platform.OS === "android") {
-      messaging().getToken().then(
-        (token)=>{
-          saveTokenToFirebase(token,isOnline)
-        }
-      )
-    }else if (Platform.OS === "ios") {
-      messaging().getAPNSToken().then(
-        (token) => {
-          saveTokenToFirebase(token,isOnline)
-        }
-      )
-    }
+    fetch('http://192.168.100.42:3000/bot')
+    .then(response => response.json())
+    .then(data => {
+      this.setState({
+        dataBot : data
+      })
+      console.log('data masuk',data)
+      })
+    .catch(error=> console.log(error))
+      let date = new Date();
+      let hours = date.getHours();
+      let minutes = date.getMinutes();
+      this.setState({time : hours + ':' + minutes});
+      console.log('jam',this.state.time)
 
-    saveUserProfiletoLocal()
-    
-    console.log("User active : " ,firebase.auth().currentUser.email)
-    const uid = firebase.auth().currentUser.uid
-    console.log("UID:" ,uid)
-    this.props.setUid(uid)
-    
-    setTimeout(() => {
-      //set User online
-      setOnlineUserFirebase(uid,true)
-    }, 500);
-
-    this.unsubscribe = messaging().onMessage(async remoteMessage => {
-      // do something when notification foreground arrived
-      // alert('A new FCM message arrived!', JSON.stringify(remoteMessage));
-      
-    });
-
-    // PushNotification.configure({
-    //   onNotification : (notification)=>{
-    //     console.log('Notif data pressed ', notification.data.uid2)
-    //     this.props.setUiduser2(notification.data.uid2)
-    //     this.props.navigation.navigate("Chatting")
-    //   } 
-    // })
-
-    
-
-    this.props.fetchMessages(uid)
-
-    
-    
   }
 
+  getTimes = () => {
+    let date = new Date();
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+    this.setState({time : hours + ':' + minutes});
+  }
+
+  distanceCheck = (s1, s2) => {
+    s1 = s1.toLowerCase();
+    s2 = s2.toLowerCase();
   
+    var costs = new Array();
+    for (var i = 0; i <= s1.length; i++) {
+      var lastValue = i;
 
-  componentWillUnmount(){
-    this.unsubscribe()
-    //set user offline
-    setOnlineUserFirebase(this.props.lastUID,false)
+      for (var j = 0; j <= s2.length; j++) {
+        if (i == 0){
+          costs[j] = j;
+        }else {
+          if (j > 0) {
+            var newValue = costs[j - 1];
+            if (s1.charAt(i - 1) != s2.charAt(j - 1))
+              newValue = Math.min(Math.min(newValue, lastValue),
+                costs[j]) + 1;
+            costs[j - 1] = lastValue;
+            lastValue = newValue;
+          }
+        }
+      }
+      if (i > 0)
+        costs[s2.length] = lastValue;
+    }
+    return costs[s2.length];
+  }
 
+  compare = (s1, s2) => {
+    s1 = s1.toString();
+    s2 = s2.toString();
+    var longer = s1;
+    var shorter = s2;
+    if (s1.length < s2.length) {
+      longer = s2;
+      shorter = s1;
+    }
+    var longerLength = longer.length;
+    if (longerLength == 0) {
+      return 1;
+    }
+    // console.log('longerlength',longerLength)
+    return (longerLength - this.distanceCheck(longer, shorter)) / parseFloat(longerLength) *100;
+  }
+
+  checkerChat = (data) =>{
+    let dataChat = this.state.dataBot.map(datas =>datas.question)
+    var percentage = []
+    console.log('databot masuk di loop',dataChat)
+ 
+     for( var i = 0; i <= dataChat.length -1; i++){
+      //  console.log('loop bor', dataChat[i])
+       if (this.compare(data,dataChat[i]) >=80){
+         tmp = (this.compare(data,dataChat[i]))
+         var id = i
+         percentage.push({id , tmp})
+        //  console.log('loop if',percentage)
+       }
+     }
+     return percentage
+  }
+
+  checkingChat = (data) => {
+    let dataAnswer = this.state.dataBot.map(datas => datas.answer)
+    let tmps = this.checkerChat(data)
+    let tmpss = tmps.map(datas => datas)
+    // let nearVal = tmpss.pop()
+    let max = Math.max(...tmpss.map(({ tmp }) => tmp));
+    let nearVal = tmpss.find(({ tmp }) => tmp === max);
+
+    console.log('emang dah',nearVal)
+    let id = _.get(nearVal, 'id' || 0)
+    let percentage = _.get(nearVal, 'tmp' || 0)
+    console.log('percentage',percentage)
+    if (percentage >=80){
+      console.log('masuk if print')
+      var sender = {'sendBy' : 'sender', 'messages' : this.state.chatContentSend, 'time' : this.getTimes()}
+      var bot = {'sendBy' : 'other', 'messages' : dataAnswer[id], 'time' : this.getTimes()}
+      this.setState({
+       chatContentSend:'',
+     itemUser :[...this.state.itemUser,sender,bot]})
+    }else{
+      var sender = {'sendBy' : 'sender', 'messages' : this.state.chatContentSend, 'time' : this.getTimes()}
+      var bot = {'sendBy' : 'other', 'messages' : 'Mohon Maaf Pertanyaan anda tidak bisa terjawab silahkan coba lagi', 'time' : this.getTimes()}
+      logChat(this.state.chatContentSend)
+      this.setState({
+      chatContentSend:'',
+      itemUser :[...this.state.itemUser,sender,bot]})
+    }
   }
 
   render() {
-    console.log('renderItem')
     return (
       <SafeAreaView style={{backgroundColor: 'white', flex: 1}}>
         <View style={styles.header} />
         <View style={styles.contentHeader}>
-          <Image style={styles.avatar} source={{uri:this.props.userProfile.avatarUrl}} />
+          <Image style={styles.avatar} source={dummyAvatar} />
           <View>
-              <Text numberOfLines={1} style={styles.textHead}>{this.props.userProfile.name}</Text>
-              <Text style={styles.textBio}>{this.props.userProfile.biodata}</Text>
+              <Text numberOfLines={1} style={styles.textHead}>admin</Text>
+              <Text style={styles.textBio}>Be Dev Be Success</Text>
           </View>
         </View>
-        {/* for Debugging */}
-        {/* <Text>{JSON.stringify(this.props.listMessages)}</Text> */}
-        {/* <Text>{JSON.stringify(this.props.uidOtherUsers)}</Text> */}
         <FlatList
-          style={{paddingHorizontal:8, paddingVertical:24}}
-          data={this.props.listMessages}
-          keyExtractor={(_item,index)=> 'key'+index}
-          renderItem={({item})=>{
-            return <ChatCard 
-            onPress={()=>{
-              this.props.setUiduser2(item.docID)
-              this.props.navigation.navigate("Chatting")
-              this.props.setUnreadChatKey(item.unreadChat)
-            }} 
-            miniChat={item.miniChat} 
-            name={item.name} 
-            avatarUrl={item.avatarUrl}
-            countUnread={item.unreadChat.length}
-            time={item.miniTime}
-            />
-          }}
-        />
-        <CFab right={21} top={87} onPress={()=>{this.props.navigation.navigate("Contact")}}/>
+                    ref={ref => this.flatList = ref}
+                    onContentSizeChange={() => this.flatList.scrollToEnd({animated: true})}
+                    onLayout={() => this.flatList.scrollToEnd({animated: true})}
+                    style={{paddingHorizontal:16,paddingVertical:12}}
+                    data={this.state.itemUser}
+                    keyExtractor={(_item,index)=> 'key'+index}
+                    renderItem={({item,index}) => {
+                              if (item.sendBy == 'sender') {
+                                return(
+                                    <View>
+                                        <CBubbleOthers message={item.messages} times={item.time || this.state.time} />
+                                    </View>
+                                )
+                              }else{
+                                return(
+                                    <View>
+                                        <CBubbleMe message={item.messages} times={item.time || this.state.time} />
+                                    </View>
+                                )
+                              }
+                          }}
+                    />
+                    <COptions isVisible={this.state.isOptionShow} 
+                        onDelete={()=>{
+                            onDeleteChat()
+                            this.setState({isOptionShow:false})
+                        }} 
+                        onBack={()=>this.setState({isOptionShow:false})} 
+                        onBackdropPress={()=>{this.setState({isOptionShow:false})}} />
+                    <CInputChatting 
+                        value={this.state.chatContentSend}
+                        onChangeText={(chatContentSend)=>this.setState({chatContentSend})} 
+                        onSend={()=>{this.checkingChat(this.state.chatContentSend)}} />
+        {/* <CFab right={21} top={87} onPress={()=>{this.props.navigation.navigate('Contact')}}/> */}
         <CLogout onPress={()=>{this.setState({isVisible:true})}} />
         <CModalLogOut isVisible={this.state.isVisible} onCencel={()=>this.setState({isVisible:false})} 
           onLogout={()=> {
-            onLogout(this.props.navigation) 
-            setOnlineUserFirebase(this.props.uid,false)}} />
+            onLogout(this.props.navigation)}} />
       </SafeAreaView>
     );
   }
@@ -164,44 +241,5 @@ const styles = StyleSheet.create({
   }
 });
 
-const mapStatetoProps = (state) =>{
-  return{
-    stateReducer : state.FirebaseReducer,
-    userProfile : state.FirebaseReducer.userProfile,
-    isOnline : state.InputReducer.isOnline,
-    lastUID : state.InputReducer.uid,
-    listMessages : state.HomeReducer.listMessages,
-    uidOtherUsers : state.FirebaseReducer.uidOtherUsers
-  }
-}
 
-const mapDispatchtoProps = (dispatch) => {
-  return {
-    setLogin : (isLogin) => {dispatch({
-      type: SET_LOGIN,
-      payload : isLogin
-    })},
-    setOnline : (isOnline) => {dispatch({
-      type : SET_ONLINE,
-      payload: isOnline
-    })},
-    setUid : (uid) => {dispatch({
-      type: SET_UID,
-      payload : uid
-    })},
-    setUiduser2 : (uid) => {dispatch({
-      type : SET_UID_USER_2,
-      payload : uid
-    })},
-    setUnreadChatKey : (key)=> {dispatch({
-      type : SET_UNREAD_CHAT_KEY,
-      payload: key
-    })},
-    fetchMessages : (uid) => {dispatch(fetchMessages(uid))},
-    getUserProfile : (UID) => {dispatch(getUserProfile(UID))}
-  }
-}
-
-
-
-export default connect(mapStatetoProps,mapDispatchtoProps)(HomeScreen)
+export default connect()(HomeScreen)
